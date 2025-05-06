@@ -1,317 +1,133 @@
 <!DOCTYPE html>
 <html lang="en">
-<head link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<head>
   <meta charset="UTF-8" />
-  <title>Time Slider with Count and Metadata</title>
-  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/dark/main.css" />
-  <script src="https://js.arcgis.com/4.29/"></script>
+  <title>Chrono-Style Time Slider Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://js.arcgis.com/4.28/esri/themes/dark/main.css" rel="stylesheet" />
+  <script src="https://js.arcgis.com/4.28/"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600&display=swap" rel="stylesheet">
+
   <style>
     html, body, #viewDiv {
-      margin: 0;
       padding: 0;
+      margin: 0;
       height: 100%;
       width: 100%;
-    }
-
-    #sliderPanel {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      background: rgba(20, 20, 20, 0.9);
-      padding: 20px;
-      box-sizing: border-box;
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 0;
-    }
-
-    #yearSlider {
-      width: 100%;
-      max-width: 100%;
-      height: 8px;
-      appearance: none;
-      background: #444;
-      border-radius: 4px;
-      outline: none;
-      border: none;
-    }
-
-    #yearSlider::-webkit-slider-thumb,
-    #yearSlider::-moz-range-thumb {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: #1e88e5;
-      cursor: pointer;
-    }
-
-    #yearLabel {
-      margin-top: 10px;
-      color: white;
-      font-size: 14px;
-      font-family: sans-serif;
-    }
-
-    #metadataBox {
-      margin-top: 10px;
-      color: #aaa;
-      font-size: 13px;
-      font-family: sans-serif;
-      text-align: center;
+      font-family: 'Nunito', 'Avenir', sans-serif;
     }
 
     #infoBox {
       position: absolute;
       top: 20px;
       left: 20px;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 14px 20px;
-      border-radius: 0px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-      z-index: 20;
-      min-width: 240px;
-      text-align: center;
-      font-family: 'Nunito', sans-serif;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 12px 18px;
+      border-radius: 0;
+      z-index: 10;
+      color: white;
+      min-width: 260px;
       display: flex;
       flex-direction: column;
-      align-items: center;
     }
 
-    .info-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: #333;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .info-number {
-      font-size: 18px;
-      font-weight: bold;
-      color: #d32f2f;
-    }
-
-    .info-line {
-      display: flex;
-      justify-content: space-between;
+    #timeSliderDiv {
+      position: absolute;
+      bottom: 0;
+      left: 0;
       width: 100%;
-      margin-top: 10px;
-      font-size: 12px;
-      color: #333;
+      height: 60px;
+      z-index: 10;
     }
-
-    .info-line div {
-      text-align: center;
-      font-weight: 600;
-      width: 22%;
-      padding: 5px 0;
-    }
-
-    .info-line div span {
-      display: block;
-      font-size: 16px;
-      font-weight: bold;
-      color: #1976d2;
-    }
-
-    /* Vertical strip styles */
-    #dayStripsContainer {
-      display: flex;
-      justify-content: center;
-      margin-top: 10px;
-      overflow-x: scroll;
-      width: 100%;
-      padding: 10px 0;
-      position: relative;
-    }
-
-    .dayStrip {
-      width: 5px;
-      height: 40px;
-      background-color: #ddd;
-      margin: 0 2px;
-      border-radius: 3px;
-      cursor: pointer;
-    }
-
-    .activeDay {
-      background-color: #1976d2;
-    }
-
   </style>
 </head>
 <body>
   <div id="viewDiv"></div>
-
-  <!-- TOP-LEFT INFO BOX -->
   <div id="infoBox">
-    <div class="info-title">EO Casualties</div>
-    <div class="info-number" id="totalCount">0</div>
-
-    <div class="info-line">
-      <div id="boys">
-        Boys
-        <span>0</span>
-      </div>
-      <div id="girls">
-        Girls
-        <span>0</span>
-      </div>
-      <div id="men">
-        Men
-        <span>0</span>
-      </div>
-      <div id="women">
-        Women
-        <span>0</span>
-      </div>
-    </div>
+    <h3>EO Casualties</h3>
+    <div id="counts">Boys: 0 | Girls: 0 | Men: 0 | Women: 0</div>
   </div>
-
-  <!-- BOTTOM SLIDER PANEL -->
-  <div id="sliderPanel">
-    <input type="range" id="yearSlider" />
-    <div id="yearLabel">Date: Loading...</div>
-    <div id="metadataBox">Loading metadata...</div>
-    <div id="dayStripsContainer"></div> <!-- Container for vertical strips -->
-  </div>
+  <div id="timeSliderDiv"></div>
 
   <script>
     require([
       "esri/Map",
       "esri/views/MapView",
       "esri/layers/FeatureLayer",
+      "esri/widgets/TimeSlider",
       "esri/TimeExtent"
-    ], function(Map, MapView, FeatureLayer, TimeExtent) {
-
-      const layer = new FeatureLayer({
-        url: "https://geosmarthosting.undp.org/arcgis/login/?returnUrl=https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer",
-        outFields: ["*"],
-        timeInfo: {
-          timeExtent: {
-            start: new Date(2000, 0, 1),
-            end: new Date(2020, 11, 31)
-          },
-          timeInterval: 86400000, // Daily interval
-          timeIntervalUnits: "milliseconds"
-        }
-      });
+    ], function(Map, MapView, FeatureLayer, TimeSlider, TimeExtent) {
 
       const map = new Map({
-        basemap: "gray",
-        layers: [layer]
+        basemap: "dark-gray-vector"
       });
 
       const view = new MapView({
         container: "viewDiv",
         map: map,
-        center: [31.1656, 48.3794],  // Coordinates for Ukraine
-        zoom: 6,  // Zoom level for Ukraine
-        ui: { components: [] }  // This removes the zoom in/out buttons and other UI components
-      });
-
-      const slider = document.getElementById("yearSlider");
-      const yearLabel = document.getElementById("yearLabel");
-      const infoBox = document.getElementById("infoBox");
-      const metadataBox = document.getElementById("metadataBox");
-      const dayStripsContainer = document.getElementById("dayStripsContainer");
-
-      const startDate = new Date(2000, 0, 1);
-      const endDate = new Date(2020, 11, 31);
-      const timeRange = endDate.getTime() - startDate.getTime();
-
-      slider.min = 0;
-      slider.max = timeRange;
-      slider.step = 86400000; // Daily step (in milliseconds)
-      slider.value = 0;
-
-      // Generate vertical strips for each day
-      function createDayStrips() {
-        const totalDays = (timeRange / 86400000);
-        for (let i = 0; i <= totalDays; i++) {
-          const strip = document.createElement("div");
-          strip.classList.add("dayStrip");
-          strip.dataset.day = i;
-          dayStripsContainer.appendChild(strip);
+        center: [31.1656, 48.3794], // Ukraine
+        zoom: 6,
+        ui: {
+          components: ["attribution"] // removes zoom in/out
         }
-      }
-
-      function updateTimeFilter(timeOffset) {
-        const selectedDate = new Date(startDate.getTime() + timeOffset);
-        yearLabel.textContent = `Date: ${selectedDate.toDateString()}`;
-
-        layer.timeExtent = new TimeExtent(selectedDate, selectedDate);
-
-        const startISO = selectedDate.toISOString().split("T")[0];
-        const whereClause = `timestamp >= DATE '${startISO}' AND timestamp < DATE '${startISO}'`;
-
-        // Update total feature count
-        layer.queryFeatureCount({ where: whereClause })
-          .then((count) => {
-            document.getElementById("totalCount").textContent = count;
-          })
-          .catch((err) => {
-            document.getElementById("totalCount").textContent = "Error";
-            console.error(err);
-          });
-
-        // Query metadata for gender and age breakdown
-        layer.queryFeatures({
-          where: whereClause,
-          outFields: ["boys", "girls", "men", "women", "other_metadata_field"],
-          returnGeometry: false
-        }).then((results) => {
-          let boys = 0;
-          let girls = 0;
-          let men = 0;
-          let women = 0;
-
-          let otherMetadata = '';
-
-          results.features.forEach(f => {
-            boys += f.attributes.boys || 0;
-            girls += f.attributes.girls || 0;
-            men += f.attributes.men || 0;
-            women += f.attributes.women || 0;
-            otherMetadata += f.attributes.other_metadata_field || ''; // Adjust field as needed
-          });
-
-          document.getElementById("boys").querySelector("span").textContent = boys;
-          document.getElementById("girls").querySelector("span").textContent = girls;
-          document.getElementById("men").querySelector("span").textContent = men;
-          document.getElementById("women").querySelector("span").textContent = women;
-
-          // Update metadata box with additional data
-          metadataBox.innerHTML = `<strong>Other Info:</strong><br>${otherMetadata}`;
-        }).catch((err) => {
-          document.getElementById("metadataBox").textContent = "Metadata error";
-          console.error(err);
-        });
-
-        // Highlight the active day in the vertical strips
-        const strips = document.querySelectorAll(".dayStrip");
-        strips.forEach((strip) => {
-          strip.classList.remove("activeDay");
-          if (parseInt(strip.dataset.day) === timeOffset) {
-            strip.classList.add("activeDay");
-          }
-        });
-      }
-
-      slider.addEventListener("input", () => {
-        const timeOffset = parseInt(slider.value);
-        updateTimeFilter(timeOffset);
       });
+
+      const casualtiesLayer = new FeatureLayer({
+        url: "https://your-server.com/arcgis/rest/services/YourLayer/MapServer/0", // Replace with your layer
+        outFields: ["*"],
+        title: "Casualties",
+        timeInfo: {
+          startField: "report_date"
+        }
+      });
+
+      map.add(casualtiesLayer);
 
       view.when(() => {
-        createDayStrips(); // Create the day strips
-        updateTimeFilter(parseInt(slider.value)); // Initialize the map with the first day
+        const timeSlider = new TimeSlider({
+          container: "timeSliderDiv",
+          view: view,
+          fullTimeExtent: new TimeExtent({
+            start: new Date("2022-01-01"),
+            end: new Date("2025-12-31")
+          }),
+          mode: "time-window",
+          values: [new Date("2022-01-01"), new Date("2022-01-15")],
+          playRate: 1000,
+          stops: {
+            interval: {
+              value: 1,
+              unit: "days"
+            }
+          }
+        });
+
+        // Optional: update the info box with dynamic counts (if data available)
+        casualtiesLayer.when(() => {
+          view.watch("timeExtent", () => {
+            const query = casualtiesLayer.createQuery();
+            query.where = "1=1";
+            query.timeExtent = view.timeExtent;
+            query.returnGeometry = false;
+            casualtiesLayer.queryFeatures(query).then((result) => {
+              const features = result.features;
+              let boys = 0, girls = 0, men = 0, women = 0;
+              features.forEach(f => {
+                const attr = f.attributes;
+                // Replace with actual field names
+                boys += attr.boys || 0;
+                girls += attr.girls || 0;
+                men += attr.men || 0;
+                women += attr.women || 0;
+              });
+              document.getElementById("counts").textContent =
+                `Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
+            });
+          });
+        });
       });
+
     });
   </script>
 </body>
-</html
+</html>
