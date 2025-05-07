@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -84,7 +84,7 @@
     ], function(Map, MapView, FeatureLayer, TimeSlider, TimeExtent) {
 
       const map = new Map({
-        basemap: "grey"
+        basemap: "dark-gray-vector"
       });
 
       const view = new MapView({
@@ -154,7 +154,7 @@
               });
 
               document.getElementById("counts").textContent =
-                Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women};
+                `Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
 
               // Populate metadata strips
               const container = document.getElementById("metadataContainer");
@@ -171,10 +171,10 @@
 
                 const box = document.createElement("div");
                 box.className = "metadataDay";
-                box.innerHTML = <strong>${day}</strong><br/>
+                box.innerHTML = `<strong>${day}</strong><br/>
                                  Events: ${attrs.length}<br/>
                                  Deaths: ${deaths}<br/>
-                                 Injured: ${injured};
+                                 Injured: ${injured}`;
                 container.appendChild(box);
               });
 
