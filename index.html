@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Chrono Map with Day Scroll</title>
+  <title>Chrono-style Map with Scroll Timeline</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://js.arcgis.com/4.28/esri/themes/dark/main.css" rel="stylesheet" />
   <script src="https://js.arcgis.com/4.28/"></script>
@@ -25,13 +25,10 @@
       padding: 12px 18px;
       z-index: 10;
       color: white;
-      min-width: 260px;
-      display: flex;
-      flex-direction: column;
-      font-size: 14px;
+      min-width: 280px;
     }
 
-    #dayScrollContainer {
+    #timelineContainer {
       position: absolute;
       bottom: 0;
       left: 0;
@@ -39,26 +36,24 @@
       height: 60px;
       overflow-x: auto;
       display: flex;
-      align-items: center;
       background: rgba(0, 0, 0, 0.6);
-      z-index: 10;
-      padding: 0 10px;
-    }
-
-    .dayButton {
-      padding: 6px 12px;
-      margin: 0 4px;
-      background: #444;
-      color: white;
-      border: none;
-      cursor: pointer;
-      font-size: 12px;
-      border-radius: 4px;
       white-space: nowrap;
+      z-index: 10;
+      scroll-behavior: smooth;
     }
 
-    .dayButton:hover {
-      background: #666;
+    .dayStrip {
+      width: 100px;
+      flex-shrink: 0;
+      padding: 8px;
+      color: white;
+      text-align: center;
+      border-right: 1px solid #444;
+      cursor: pointer;
+    }
+
+    .dayStrip.active {
+      background: #f97c3c;
     }
 
     #metadataContainer {
@@ -75,7 +70,7 @@
     }
 
     .metadataDay {
-      min-width: 120px;
+      min-width: 140px;
       padding: 8px;
       color: white;
       border-right: 1px solid #555;
@@ -95,7 +90,7 @@
   </div>
 
   <div id="metadataContainer"></div>
-  <div id="dayScrollContainer"></div>
+  <div id="timelineContainer"></div>
 
   <script>
     require([
@@ -120,8 +115,7 @@
 
       const casualtiesLayer = new FeatureLayer({
         url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
-        outFields: ["*"],
-        title: "Casualties"
+        outFields: ["*"]
       });
 
       map.add(casualtiesLayer);
@@ -132,27 +126,37 @@
           outFields: ["report_date"],
           returnGeometry: false,
           orderByFields: ["report_date ASC"]
-        }).then((results) => {
-          const dates = [...new Set(results.features.map(f =>
+        }).then(results => {
+          const uniqueDates = [...new Set(results.features.map(f =>
             new Date(f.attributes.report_date).toISOString().split("T")[0]
           ))];
 
-          const container = document.getElementById("dayScrollContainer");
-          dates.forEach(date => {
-            const btn = document.createElement("button");
-            btn.className = "dayButton";
-            btn.textContent = date;
-            btn.onclick = () => filterByDate(date);
-            container.appendChild(btn);
+          const timeline = document.getElementById("timelineContainer");
+
+          uniqueDates.forEach(date => {
+            const div = document.createElement("div");
+            div.className = "dayStrip";
+            div.textContent = date;
+            div.dataset.date = date;
+            div.addEventListener("click", () => {
+              document.querySelectorAll(".dayStrip").forEach(el => el.classList.remove("active"));
+              div.classList.add("active");
+              filterByDate(date);
+            });
+            timeline.appendChild(div);
           });
 
-          if (dates.length) filterByDate(dates[0]);
+          // Load initial day
+          if (uniqueDates.length) {
+            document.querySelector(".dayStrip").classList.add("active");
+            filterByDate(uniqueDates[0]);
+          }
         });
 
         function filterByDate(dateStr) {
           const start = new Date(dateStr);
           const end = new Date(start);
-          end.setDate(start.getDate() + 1); // next day
+          end.setDate(start.getDate() + 1);
 
           const query = casualtiesLayer.createQuery();
           query.where = `report_date >= DATE '${dateStr}' AND report_date < DATE '${end.toISOString().split("T")[0]}'`;
@@ -162,36 +166,30 @@
             const features = result.features;
 
             let boys = 0, girls = 0, men = 0, women = 0;
-
-            const dayData = [];
+            const metadataBox = document.getElementById("metadataContainer");
+            metadataBox.innerHTML = "";
 
             features.forEach(f => {
               const attr = f.attributes;
-
               boys += attr.killed_male_child || 0;
               girls += attr.killed_female_child || 0;
               men += attr.killed_male_adult || 0;
               women += attr.killed_female_adult || 0;
-
-              dayData.push(attr);
             });
 
             document.getElementById("counts").textContent =
               `Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
 
-            // Metadata
-            const metadata = document.getElementById("metadataContainer");
-            metadata.innerHTML = "";
-
             const box = document.createElement("div");
             box.className = "metadataDay";
             box.innerHTML = `<strong>${dateStr}</strong><br/>
-                             Events: ${dayData.length}<br/>
+                             Events: ${features.length}<br/>
                              Deaths: ${boys + girls + men + women}`;
-            metadata.appendChild(box);
+            metadataBox.appendChild(box);
           });
         }
       });
     });
   </script>
 </body>
+</html>
