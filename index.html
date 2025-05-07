@@ -30,6 +30,15 @@
       flex-direction: column;
     }
 
+    #timeSliderDiv {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 60px;
+      z-index: 10;
+    }
+
     #metadataContainer {
       position: absolute;
       bottom: 60px;
@@ -41,7 +50,6 @@
       background: rgba(0, 0, 0, 0.4);
       z-index: 9;
       border-top: 1px solid #888;
-      scroll-behavior: smooth;
     }
 
     .metadataDay {
@@ -52,22 +60,6 @@
       font-size: 12px;
       text-align: center;
       flex-shrink: 0;
-    }
-
-    #timeSliderScrollWrapper {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      overflow-x: auto;
-      background: rgba(0, 0, 0, 0.4);
-      z-index: 10;
-      padding-bottom: 4px;
-    }
-
-    #timeSliderDiv {
-      min-width: 1200px;
-      height: 60px;
     }
   </style>
 </head>
@@ -80,10 +72,7 @@
   </div>
 
   <div id="metadataContainer"></div>
-
-  <div id="timeSliderScrollWrapper">
-    <div id="timeSliderDiv"></div>
-  </div>
+  <div id="timeSliderDiv"></div>
 
   <script>
     require([
@@ -109,7 +98,7 @@
       });
 
       const casualtiesLayer = new FeatureLayer({
-        url: "",
+        url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
         outFields: ["*"],
         title: "Casualties",
         timeInfo: {
@@ -165,7 +154,7 @@
               });
 
               document.getElementById("counts").textContent =
-                `Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
+                Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women};
 
               // Populate metadata strips
               const container = document.getElementById("metadataContainer");
@@ -182,36 +171,16 @@
 
                 const box = document.createElement("div");
                 box.className = "metadataDay";
-                box.innerHTML = `<strong>${day}</strong><br/>
+                box.innerHTML = <strong>${day}</strong><br/>
                                  Events: ${attrs.length}<br/>
                                  Deaths: ${deaths}<br/>
-                                 Injured: ${injured}`;
+                                 Injured: ${injured};
                 container.appendChild(box);
               });
+
             });
           });
         });
-
-        // Sync horizontal scrolling between metadata and time slider
-        const metadataContainer = document.getElementById("metadataContainer");
-        const timeSliderWrapper = document.getElementById("timeSliderScrollWrapper");
-
-        let isSyncingScroll = false;
-
-        metadataContainer.addEventListener("scroll", () => {
-          if (isSyncingScroll) return;
-          isSyncingScroll = true;
-          timeSliderWrapper.scrollLeft = metadataContainer.scrollLeft;
-          isSyncingScroll = false;
-        });
-
-        timeSliderWrapper.addEventListener("scroll", () => {
-          if (isSyncingScroll) return;
-          isSyncingScroll = true;
-          metadataContainer.scrollLeft = timeSliderWrapper.scrollLeft;
-          isSyncingScroll = false;
-        });
-
       });
     });
   </script>
