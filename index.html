@@ -145,7 +145,7 @@
                 const attr = f.attributes;
                 const day = new Date(attr.report_date).toISOString().split("T")[0];
 
-                boys += attr.boys || 0;
+                boys += attr.killed_male_child || 0;
                 girls += attr.girls || 0;
                 men += attr.men || 0;
                 women += attr.women || 0;
@@ -155,7 +155,7 @@
               });
 
               document.getElementById("counts").textContent =
-                `Boys: ${killed_male_child} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
+                `Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
 
               // Populate metadata strips
               const container = document.getElementById("metadataContainer");
