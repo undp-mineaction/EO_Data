@@ -169,12 +169,12 @@
             const metadataBox = document.getElementById("metadataContainer");
             metadataBox.innerHTML = "";
 
-            features.forEach(f => {
-              const attr = f.attributes;
-              boys += attr.killed_male_child || 0;
-              girls += attr.killed_female_child || 0;
-              men += attr.killed_male_adult || 0;
-              women += attr.killed_female_adult || 0;
+        features.forEach(f => {
+            const attr = f.attributes;
+            boys += attr.killed_male_child || 0;
+            girls += attr.killed_female_child || 0;
+            men += attr.killed_male_adult || 0;
+            women += attr.killed_female_adult || 0;
             });
 
             document.getElementById("counts").textContent =
