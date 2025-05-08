@@ -86,6 +86,19 @@
         url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
         outFields: ["*"],
         title: "Casualties"
+          renderer: {
+    type: "simple",  // simple renderer for all points
+    symbol: {
+      type: "simple-marker",
+      color: "#e74c3c",  // red color
+      size: "8px",
+      outline: {
+        color: "#ffffff", // white border
+        width: 1
+      }
+    }
+  }
+});
       });
 
       map.add(casualtiesLayer);
@@ -144,6 +157,8 @@
                              Deaths: ${killed}<br/>
                              Injured: ${injured}`;
             container.appendChild(box);
+
+            
           });
         });
       });
