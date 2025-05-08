@@ -85,16 +85,16 @@
       const casualtiesLayer = new FeatureLayer({
         url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
         outFields: ["*"],
-        title: "Casualties"
+        title: "Casualties",
           renderer: {
     type: "simple",  // simple renderer for all points
     symbol: {
       type: "simple-marker",
       color: "#e74c3c",  // red color
-      size: "8px",
+      size: "15px",
       outline: {
         color: "#ffffff", // white border
-        width: 1
+        width: 0.5
       }
     }
   }
