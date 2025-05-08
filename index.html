@@ -85,9 +85,10 @@ const casualtiesLayer = new FeatureLayer({
   url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
   outFields: ["*"],
   title: "Casualties",
+  labelsVisible: true,
   labelingInfo: [{
     labelExpressionInfo: {
-      expression: "$feature.Incident_Count" // replace with your desired field
+      expression: "$feature.Incident_Count" // Change to an existing field if needed
     },
     symbol: {
       type: "text",
@@ -100,39 +101,21 @@ const casualtiesLayer = new FeatureLayer({
       }
     },
     labelPlacement: "above-center",
-    where: "killed > 0" // optional: only label where killed > 0
+    where: "killed > 0"
   }],
-  labelsVisible: true, // enable labels
   renderer: {
     type: "simple",
     symbol: {
       type: "simple-marker",
       color: "#e74c3c",
-      size: "8px",
+      size: "15px",
       outline: {
         color: "#ffffff",
-        width: 1
+        width: 0.5
       }
     }
   }
 });
-      const casualtiesLayer = new FeatureLayer({
-        url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
-        outFields: ["*"],
-        title: "Casualties",
-        renderer: {
-          type: "simple",
-          symbol: {
-            type: "simple-marker",
-            color: "#e74c3c",
-            size: "15px",
-            outline: {
-              color: "#ffffff",
-              width: 0.5
-            }
-          }
-        }
-      });
 
       map.add(casualtiesLayer);
 
