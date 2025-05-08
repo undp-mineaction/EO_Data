@@ -86,19 +86,18 @@
         url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
         outFields: ["*"],
         title: "Casualties",
-          renderer: {
-    type: "simple",  // simple renderer for all points
-    symbol: {
-      type: "simple-marker",
-      color: "#e74c3c",  // red color
-      size: "15px",
-      outline: {
-        color: "#ffffff", // white border
-        width: 0.5
-      }
-    }
-  }
-});
+        renderer: {
+          type: "simple",
+          symbol: {
+            type: "simple-marker",
+            color: "#e74c3c",
+            size: "15px",
+            outline: {
+              color: "#ffffff",
+              width: 0.5
+            }
+          }
+        }
       });
 
       map.add(casualtiesLayer);
@@ -110,14 +109,13 @@
           returnGeometry: false
         }).then(result => {
           const features = result.features;
-
           const dayGroups = {};
 
           let boys = 0, girls = 0, men = 0, women = 0;
 
           features.forEach(f => {
             const attr = f.attributes;
-            const date = new Date(attr.report_dt);
+            const date = new Date(attr.report_dt); // <-- Ensure this field name matches the layer
             const day = date.toISOString().split("T")[0];
 
             if (!dayGroups[day]) dayGroups[day] = [];
@@ -130,7 +128,7 @@
           });
 
           document.getElementById("counts").textContent =
-            Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women};
+            `Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
 
           // Add metadata strips
           const container = document.getElementById("metadataContainer");
@@ -152,13 +150,11 @@
 
             const box = document.createElement("div");
             box.className = "metadataDay";
-            box.innerHTML = <strong>${day}</strong><br/>
+            box.innerHTML = `<strong>${day}</strong><br/>
                              Events: ${attrs.length}<br/>
                              Deaths: ${killed}<br/>
-                             Injured: ${injured};
+                             Injured: ${injured}`;
             container.appendChild(box);
-
-            
           });
         });
       });
