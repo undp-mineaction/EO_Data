@@ -81,7 +81,41 @@
           components: ["attribution"] // removes zoom buttons
         }
       });
-
+const casualtiesLayer = new FeatureLayer({
+  url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
+  outFields: ["*"],
+  title: "Casualties",
+  labelingInfo: [{
+    labelExpressionInfo: {
+      expression: "$feature.killed" // replace with your desired field
+    },
+    symbol: {
+      type: "text",
+      color: "white",
+      haloColor: "black",
+      haloSize: "1px",
+      font: {
+        size: 10,
+        family: "Nunito"
+      }
+    },
+    labelPlacement: "above-center",
+    where: "killed > 0" // optional: only label where killed > 0
+  }],
+  labelsVisible: true, // enable labels
+  renderer: {
+    type: "simple",
+    symbol: {
+      type: "simple-marker",
+      color: "#e74c3c",
+      size: "8px",
+      outline: {
+        color: "#ffffff",
+        width: 1
+      }
+    }
+  }
+});
       const casualtiesLayer = new FeatureLayer({
         url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
         outFields: ["*"],
