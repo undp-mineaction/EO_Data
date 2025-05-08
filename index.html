@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Chrono Map Style</title>
+  <title>Chrono Map with Horizontal Scroll</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://js.arcgis.com/4.28/esri/themes/dark/main.css" rel="stylesheet" />
   <script src="https://js.arcgis.com/4.28/"></script>
@@ -14,19 +14,17 @@
       height: 100%;
       width: 100%;
       font-family: 'Nunito', 'Avenir', sans-serif;
-      background-color: #1a1a1a;
     }
 
     #infoBox {
       position: absolute;
       top: 20px;
       left: 20px;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.3);
       padding: 12px 18px;
       z-index: 10;
       color: white;
       min-width: 260px;
-      border-left: 4px solid #f04e4e;
     }
 
     #metadataContainer {
@@ -43,31 +41,21 @@
     }
 
     .metadataDay {
-      min-width: 160px;
+      min-width: 140px;
       padding: 6px;
       color: white;
       border-right: 1px solid #555;
-      font-size: 13px;
+      font-size: 12px;
       text-align: center;
       flex-shrink: 0;
-    }
-
-    #timeSlider {
-      width: 100%;
-      position: absolute;
-      bottom: 120px;
-      left: 0;
-      z-index: 10;
     }
   </style>
 </head>
 <body>
   <div id="viewDiv"></div>
 
-  <input type="range" id="timeSlider" min="0" max="364" value="0" />
-
   <div id="infoBox">
-    <h3 style="margin: 0 0 8px;">EO Casualties</h3>
+    <h3>EO Casualties</h3>
     <div id="counts">Boys: 0 | Girls: 0 | Men: 0 | Women: 0</div>
   </div>
 
@@ -77,12 +65,11 @@
     require([
       "esri/Map",
       "esri/views/MapView",
-      "esri/layers/FeatureLayer",
-      "esri/Graphic"
-    ], function(Map, MapView, FeatureLayer, Graphic) {
+      "esri/layers/FeatureLayer"
+    ], function(Map, MapView, FeatureLayer) {
 
       const map = new Map({
-        basemap: "dark-gray-vector"
+        basemap: "gray"
       });
 
       const view = new MapView({
@@ -90,120 +77,89 @@
         map: map,
         center: [31.1656, 48.3794], // Ukraine
         zoom: 6,
-        ui: { components: ["attribution"] }
+        ui: {
+          components: ["attribution"] // removes zoom buttons
+        }
       });
 
       const casualtiesLayer = new FeatureLayer({
         url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
         outFields: ["*"],
-        title: "Casualties",
-        renderer: {
-          type: "simple",
-          symbol: {
-            type: "simple-marker",
-            color: "#e74c3c",
-            size: "8px",
-            outline: {
-              color: "#ffffff",
-              width: 1
-            }
-          }
-        }
+        title: "Casualties"
+          renderer: {
+    type: "simple",  // simple renderer for all points
+    symbol: {
+      type: "simple-marker",
+      color: "#e74c3c",  // red color
+      size: "8px",
+      outline: {
+        color: "#ffffff", // white border
+        width: 1
+      }
+    }
+  }
+});
       });
 
       map.add(casualtiesLayer);
-
-      let allFeatures = [];
-      let dayGroups = {};
 
       casualtiesLayer.when(() => {
         casualtiesLayer.queryFeatures({
           where: "1=1",
           outFields: ["*"],
-          returnGeometry: true
+          returnGeometry: false
         }).then(result => {
-          allFeatures = result.features;
+          const features = result.features;
 
-          allFeatures.forEach(f => {
-            const date = new Date(f.attributes.report_dt);
+          const dayGroups = {};
+
+          let boys = 0, girls = 0, men = 0, women = 0;
+
+          features.forEach(f => {
+            const attr = f.attributes;
+            const date = new Date(attr.report_dt);
             const day = date.toISOString().split("T")[0];
+
             if (!dayGroups[day]) dayGroups[day] = [];
-            dayGroups[day].push(f);
+            dayGroups[day].push(attr);
+
+            boys += attr.killed_male_child || 0;
+            girls += attr.killed_female_child || 0;
+            men += attr.killed_male_adult || 0;
+            women += attr.killed_female_adult || 0;
           });
 
-          const sortedDays = Object.keys(dayGroups).sort();
-          const timeSlider = document.getElementById("timeSlider");
-          timeSlider.max = sortedDays.length - 1;
+          document.getElementById("counts").textContent =
+            Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women};
 
-          updateForDayIndex(0);
+          // Add metadata strips
+          const container = document.getElementById("metadataContainer");
+          container.innerHTML = "";
 
-          timeSlider.addEventListener("input", (e) => {
-            const dayIndex = parseInt(e.target.value);
-            updateForDayIndex(dayIndex);
-          });
+          Object.entries(dayGroups).sort().forEach(([day, attrs]) => {
+            let killed = 0;
+            let injured = 0;
 
-          function updateForDayIndex(index) {
-            const day = sortedDays[index];
-            const dayFeatures = dayGroups[day] || [];
-
-            // Update layer dynamically using graphics
-            const graphics = dayFeatures.map(f => new Graphic({
-              geometry: f.geometry,
-              attributes: f.attributes
-            }));
-
-            casualtiesLayer.source = graphics;
-
-            updateInfoBox(dayFeatures);
-            updateMetadataBox(day, dayFeatures);
-          }
-
-          function updateInfoBox(features) {
-            let boys = 0, girls = 0, men = 0, women = 0;
-
-            features.forEach(f => {
-              const a = f.attributes;
-              boys += a.killed_male_child || 0;
-              girls += a.killed_female_child || 0;
-              men += a.killed_male_adult || 0;
-              women += a.killed_female_adult || 0;
+            attrs.forEach(a => {
+              killed += a.killed || 0;
+              injured += (
+                (a.injured_female_adult || 0) +
+                (a.injured_male_adult || 0) +
+                (a.injured_female_child || 0) +
+                (a.injured_male_child || 0)
+              );
             });
-
-            document.getElementById("counts").textContent =
-              `Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
-          }
-
-          function updateMetadataBox(day, features) {
-            let killed = 0, injured = 0;
-
-            features.forEach(a => {
-              killed += a.attributes.killed || 0;
-              injured +=
-                (a.attributes.injured_female_adult || 0) +
-                (a.attributes.injured_male_adult || 0) +
-                (a.attributes.injured_female_child || 0) +
-                (a.attributes.injured_male_child || 0);
-            });
-
-            const container = document.getElementById("metadataContainer");
-            container.innerHTML = "";
 
             const box = document.createElement("div");
             box.className = "metadataDay";
-            box.innerHTML = `<strong>${day}</strong><br/>
-                             Events: ${features.length}<br/>
+            box.innerHTML = <strong>${day}</strong><br/>
+                             Events: ${attrs.length}<br/>
                              Deaths: ${killed}<br/>
-                             Injured: ${injured}`;
+                             Injured: ${injured};
             container.appendChild(box);
-          }
 
-          // Optional autoplay
-          let currentIndex = 0;
-          setInterval(() => {
-            currentIndex = (currentIndex + 1) % sortedDays.length;
-            timeSlider.value = currentIndex;
-            timeSlider.dispatchEvent(new Event("input"));
-          }, 3000);
+            
+          });
         });
       });
     });
