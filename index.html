@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Chrono Map with Horizontal Scroll</title>
+  <title>Chrono Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://js.arcgis.com/4.28/esri/themes/dark/main.css" rel="stylesheet" />
   <script src="https://js.arcgis.com/4.28/"></script>
@@ -24,8 +24,7 @@
       padding: 12px 18px;
       z-index: 10;
       color: white;
-      min-width: 280px;
-      font-size: 14px;
+      min-width: 260px;
     }
 
     #metadataContainer {
@@ -49,10 +48,6 @@
       font-size: 12px;
       text-align: center;
       flex-shrink: 0;
-    }
-
-    .metadataDay.highlight {
-      background-color: rgba(255, 255, 255, 0.1);
     }
   </style>
 </head>
@@ -83,7 +78,7 @@
         center: [31.1656, 48.3794], // Ukraine
         zoom: 6,
         ui: {
-          components: ["attribution"]
+          components: ["attribution"] // removes zoom buttons
         }
       });
 
@@ -91,32 +86,53 @@
         url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
         outFields: ["*"],
         title: "Casualties",
+        labelingInfo: [{
+          labelExpressionInfo: {
+            expression: "$feature.incident_count"
+          },
+          symbol: {
+            type: "text",
+            color: "white",
+            haloColor: "black",
+            haloSize: 1,
+            font: {
+              size: 12,
+              family: "Avenir Next",
+              weight: "bold"
+            }
+          },
+          labelPlacement: "center-center"
+        }],
         labelsVisible: true,
         renderer: {
           type: "simple",
           symbol: {
             type: "simple-marker",
-            color: "#e74c3c",
-            size: "10px",
+            style: "circle",
+            color: "#ff3b30",
+            size: "20px",
             outline: {
               color: "#ffffff",
-              width: 1
+              width: 1.5
             }
-          }
+          },
+          visualVariables: [
+            {
+              type: "size",
+              field: "incident_count",
+              stops: [
+                { value: 1, size: "10px" },
+                { value: 5, size: "16px" },
+                { value: 10, size: "24px" }
+              ]
+            }
+          ]
         }
       });
 
-      let casualtiesLayerView;
-
       map.add(casualtiesLayer);
 
-      const container = document.getElementById("metadataContainer");
-
       casualtiesLayer.when(() => {
-        view.whenLayerView(casualtiesLayer).then(function(layerView) {
-          casualtiesLayerView = layerView;
-        });
-
         casualtiesLayer.queryFeatures({
           where: "1=1",
           outFields: ["*"],
@@ -144,6 +160,7 @@
           document.getElementById("counts").textContent =
             `Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
 
+          const container = document.getElementById("metadataContainer");
           container.innerHTML = "";
 
           Object.entries(dayGroups).sort().forEach(([day, attrs]) => {
@@ -162,46 +179,14 @@
 
             const box = document.createElement("div");
             box.className = "metadataDay";
-            box.setAttribute("data-day", day);
             box.innerHTML = `<strong>${day}</strong><br/>
                              Events: ${attrs.length}<br/>
                              Deaths: ${killed}<br/>
                              Injured: ${injured}`;
             container.appendChild(box);
           });
-
-          // Enable scroll interaction
-          container.addEventListener("scroll", updateOnScroll);
-          updateOnScroll(); // initial call
         });
       });
-
-      function updateOnScroll() {
-        const boxes = document.querySelectorAll(".metadataDay");
-        const containerRect = container.getBoundingClientRect();
-        const visibleDays = [];
-
-        boxes.forEach(box => {
-          const rect = box.getBoundingClientRect();
-
-          if (rect.right >= containerRect.left && rect.left <= containerRect.right) {
-            visibleDays.push(box.getAttribute("data-day"));
-            box.classList.add("highlight");
-          } else {
-            box.classList.remove("highlight");
-          }
-        });
-
-        if (visibleDays.length > 0 && casualtiesLayerView) {
-          const whereClause = visibleDays
-            .map(day => `report_dt LIKE '${day}%'`)
-            .join(" OR ");
-
-          casualtiesLayerView.filter = {
-            where: whereClause
-          };
-        }
-      }
     });
   </script>
 </body>
