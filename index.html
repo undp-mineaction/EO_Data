@@ -38,6 +38,7 @@
       background: rgba(0, 0, 0, 0.4);
       z-index: 9;
       border-top: 1px solid #888;
+      scroll-snap-type: x mandatory;
     }
 
     .metadataDay {
@@ -48,6 +49,12 @@
       font-size: 12px;
       text-align: center;
       flex-shrink: 0;
+      scroll-snap-align: start;
+    }
+
+    .metadataDay.active {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid #fff;
     }
   </style>
 </head>
@@ -77,47 +84,30 @@
         map: map,
         center: [31.1656, 48.3794], // Ukraine
         zoom: 6,
-        ui: {
-          components: ["attribution"] // removes zoom buttons
+        ui: { components: ["attribution"] }
+      });
+
+      const casualtiesLayer = new FeatureLayer({
+        url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
+        outFields: ["*"],
+        title: "Casualties",
+        renderer: {
+          type: "simple",
+          symbol: {
+            type: "simple-marker",
+            color: "#e74c3c",
+            size: "15px",
+            outline: {
+              color: "#ffffff",
+              width: 0.5
+            }
+          }
         }
       });
-const casualtiesLayer = new FeatureLayer({
-  url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
-  outFields: ["*"],
-  title: "Casualties",
-  labelsVisible: true,
-  labelingInfo: [{
-    labelExpressionInfo: {
-      expression: "$feature.Incident_Count" // Change to an existing field if needed
-    },
-    symbol: {
-      type: "text",
-      color: "white",
-      haloColor: "black",
-      haloSize: "1px",
-      font: {
-        size: 10,
-        family: "Nunito"
-      }
-    },
-    labelPlacement: "above-center",
-    where: "killed > 0"
-  }],
-  renderer: {
-    type: "simple",
-    symbol: {
-      type: "simple-marker",
-      color: "#e74c3c",
-      size: "15px",
-      outline: {
-        color: "#ffffff",
-        width: 0.5
-      }
-    }
-  }
-});
 
       map.add(casualtiesLayer);
+
+      let allFeatures = [];
 
       casualtiesLayer.when(() => {
         casualtiesLayer.queryFeatures({
@@ -125,56 +115,105 @@ const casualtiesLayer = new FeatureLayer({
           outFields: ["*"],
           returnGeometry: false
         }).then(result => {
-          const features = result.features;
-          const dayGroups = {};
-
-          let boys = 0, girls = 0, men = 0, women = 0;
-
-          features.forEach(f => {
-            const attr = f.attributes;
-            const date = new Date(attr.report_dt); // <-- Ensure this field name matches the layer
-            const day = date.toISOString().split("T")[0];
-
-            if (!dayGroups[day]) dayGroups[day] = [];
-            dayGroups[day].push(attr);
-
-            boys += attr.killed_male_child || 0;
-            girls += attr.killed_female_child || 0;
-            men += attr.killed_male_adult || 0;
-            women += attr.killed_female_adult || 0;
-          });
-
-          document.getElementById("counts").textContent =
-            `Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
-
-          // Add metadata strips
-          const container = document.getElementById("metadataContainer");
-          container.innerHTML = "";
-
-          Object.entries(dayGroups).sort().forEach(([day, attrs]) => {
-            let killed = 0;
-            let injured = 0;
-
-            attrs.forEach(a => {
-              killed += a.killed || 0;
-              injured += (
-                (a.injured_female_adult || 0) +
-                (a.injured_male_adult || 0) +
-                (a.injured_female_child || 0) +
-                (a.injured_male_child || 0)
-              );
-            });
-
-            const box = document.createElement("div");
-            box.className = "metadataDay";
-            box.innerHTML = `<strong>${day}</strong><br/>
-                             Events: ${attrs.length}<br/>
-                             Deaths: ${killed}<br/>
-                             Injured: ${injured}`;
-            container.appendChild(box);
-          });
+          allFeatures = result.features;
+          renderMetadataStrip(allFeatures);
+          scrollListener(); // Attach after rendering
         });
       });
+
+      function renderMetadataStrip(features) {
+        const dayGroups = {};
+        features.forEach(f => {
+          const attr = f.attributes;
+          const date = new Date(attr.report_dt);
+          const day = date.toISOString().split("T")[0];
+          if (!dayGroups[day]) dayGroups[day] = [];
+          dayGroups[day].push(attr);
+        });
+
+        const container = document.getElementById("metadataContainer");
+        container.innerHTML = "";
+
+        Object.entries(dayGroups).sort().forEach(([day, attrs]) => {
+          let killed = 0, injured = 0;
+          attrs.forEach(a => {
+            killed += a.killed || 0;
+            injured +=
+              (a.injured_female_adult || 0) +
+              (a.injured_male_adult || 0) +
+              (a.injured_female_child || 0) +
+              (a.injured_male_child || 0);
+          });
+
+          const box = document.createElement("div");
+          box.className = "metadataDay";
+          box.setAttribute("data-day", day);
+          box.innerHTML = `<strong>${day}</strong><br/>
+                           Events: ${attrs.length}<br/>
+                           Deaths: ${killed}<br/>
+                           Injured: ${injured}`;
+          container.appendChild(box);
+        });
+
+        // Initialize to first day
+        const firstDay = container.querySelector(".metadataDay")?.getAttribute("data-day");
+        if (firstDay) updateCountsForDay(firstDay);
+      }
+
+      function scrollListener() {
+        const container = document.getElementById("metadataContainer");
+
+        container.addEventListener("scroll", () => {
+          const boxes = Array.from(container.getElementsByClassName("metadataDay"));
+
+          let closestBox = null;
+          let closestOffset = Infinity;
+
+          boxes.forEach(box => {
+            const boxRect = box.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            const offset = Math.abs(boxRect.left - containerRect.left);
+
+            if (offset < closestOffset) {
+              closestOffset = offset;
+              closestBox = box;
+            }
+          });
+
+          if (closestBox) {
+            const day = closestBox.getAttribute("data-day");
+            if (day && day !== container.getAttribute("data-active-day")) {
+              container.setAttribute("data-active-day", day);
+
+              // highlight active
+              boxes.forEach(b => b.classList.remove("active"));
+              closestBox.classList.add("active");
+
+              updateCountsForDay(day);
+            }
+          }
+        });
+      }
+
+      function updateCountsForDay(day) {
+        let boys = 0, girls = 0, men = 0, women = 0;
+
+        const dayFeatures = allFeatures.filter(f => {
+          const date = new Date(f.attributes.report_dt);
+          return date.toISOString().split("T")[0] === day;
+        });
+
+        dayFeatures.forEach(f => {
+          const attr = f.attributes;
+          boys += attr.killed_male_child || 0;
+          girls += attr.killed_female_child || 0;
+          men += attr.killed_male_adult || 0;
+          women += attr.killed_female_adult || 0;
+        });
+
+        document.getElementById("counts").textContent =
+          `Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
+      }
     });
   </script>
 </body>
