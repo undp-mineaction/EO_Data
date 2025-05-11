@@ -2,190 +2,262 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Chrono Map</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link href="https://js.arcgis.com/4.28/esri/themes/dark/main.css" rel="stylesheet" />
-  <script src="https://js.arcgis.com/4.28/"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600&display=swap" rel="stylesheet">
+  <title>Time Slider with Count and Metadata</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/dark/main.css" />
+  <script src="https://js.arcgis.com/4.29/"></script>
   <style>
     html, body, #viewDiv {
-      padding: 0;
       margin: 0;
+      padding: 0;
       height: 100%;
       width: 100%;
-      font-family: 'Nunito', 'Avenir', sans-serif;
+    }
+
+    #sliderPanel {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(20, 20, 20, 0.9);
+      padding: 20px;
+      box-sizing: border-box;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+    }
+
+    #yearSlider {
+      width: 100%;
+      max-width: 100%;
+      height: 8px;
+      appearance: none;
+      background: #444;
+      border-radius: 4px;
+      outline: none;
+      border: none;
+    }
+
+    #yearSlider::-webkit-slider-thumb,
+    #yearSlider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #1e88e5;
+      cursor: pointer;
+    }
+
+    #yearLabel {
+      margin-top: 10px;
+      color: white;
+      font-size: 14px;
+      font-family: sans-serif;
+    }
+
+    #metadataBox {
+      margin-top: 10px;
+      color: #aaa;
+      font-size: 13px;
+      font-family: sans-serif;
+      text-align: center;
     }
 
     #infoBox {
       position: absolute;
       top: 20px;
       left: 20px;
-      background: rgba(0, 0, 0, 0.3);
-      padding: 12px 18px;
-      z-index: 10;
-      color: white;
-      min-width: 260px;
-    }
-
-    #metadataContainer {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 120px;
-      overflow-x: auto;
-      display: flex;
-      background: rgba(0, 0, 0, 0.4);
-      z-index: 9;
-      border-top: 1px solid #888;
-    }
-
-    .metadataDay {
-      min-width: 140px;
-      padding: 6px;
-      color: white;
-      border-right: 1px solid #555;
-      font-size: 12px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 14px 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      z-index: 20;
+      min-width: 240px;
       text-align: center;
-      flex-shrink: 0;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
+
+    .info-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .info-number {
+      font-size: 18px;
+      font-weight: bold;
+      color: #d32f2f;
+    }
+
+    .info-line {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #333;
+    }
+
+    .info-line div {
+      text-align: center;
+      font-weight: 600;
+      width: 22%;
+      padding: 5px 0;
+    }
+
+    .info-line div span {
+      display: block;
+      font-size: 16px;
+      font-weight: bold;
+      color: #1976d2;
+    }
+
   </style>
 </head>
 <body>
   <div id="viewDiv"></div>
 
+  <!-- TOP-LEFT INFO BOX -->
   <div id="infoBox">
-    <h3>EO Casualties</h3>
-    <div id="counts">Boys: 0 | Girls: 0 | Men: 0 | Women: 0</div>
+    <div class="info-title">EO Casualties</div>
+    <div class="info-number" id="totalCount">0</div>
+
+    <div class="info-line">
+      <div id="boys">
+        Boys
+        <span>0</span>
+      </div>
+      <div id="girls">
+        Girls
+        <span>0</span>
+      </div>
+      <div id="men">
+        Men
+        <span>0</span>
+      </div>
+      <div id="women">
+        Women
+        <span>0</span>
+      </div>
+    </div>
   </div>
 
-  <div id="metadataContainer"></div>
+  <!-- BOTTOM SLIDER PANEL -->
+  <div id="sliderPanel">
+    <input type="range" id="yearSlider" />
+    <div id="yearLabel">Date: Loading...</div>
+    <div id="metadataBox">Loading metadata...</div>
+  </div>
 
   <script>
     require([
       "esri/Map",
       "esri/views/MapView",
-      "esri/layers/FeatureLayer"
-    ], function(Map, MapView, FeatureLayer) {
+      "esri/layers/FeatureLayer",
+      "esri/TimeExtent"
+    ], function(Map, MapView, FeatureLayer, TimeExtent) {
+
+      const layer = new FeatureLayer({
+        url: "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Hurricanes/MapServer/0",
+        outFields: ["*"],
+        timeInfo: {
+          timeExtent: {
+            start: new Date(2000, 0, 1),
+            end: new Date(2020, 11, 31)
+          },
+          timeInterval: 86400000, 
+          timeIntervalUnits: "milliseconds"
+        }
+      });
 
       const map = new Map({
-        basemap: "gray"
+        basemap: "dark-gray-vector",
+        layers: [layer]
       });
 
       const view = new MapView({
         container: "viewDiv",
         map: map,
-        center: [31.1656, 48.3794], // Ukraine
-        zoom: 6,
-        ui: {
-          components: ["attribution"] // removes zoom buttons
-        }
+        center: [-90, 30],
+        zoom: 4
       });
 
-      const casualtiesLayer = new FeatureLayer({
-        url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
-        outFields: ["*"],
-        title: "Casualties",
-        labelingInfo: [{
-          labelExpressionInfo: {
-            expression: "$feature.incident_count"
-          },
-          symbol: {
-            type: "text",
-            color: "white",
-            haloColor: "black",
-            haloSize: 1,
-            font: {
-              size: 12,
-              family: "Avenir Next",
-              weight: "bold"
-            }
-          },
-          labelPlacement: "center-center"
-        }],
-        labelsVisible: true,
-        renderer: {
-          type: "simple",
-          symbol: {
-            type: "simple-marker",
-            style: "circle",
-            color: "#ff3b30",
-            size: "20px",
-            outline: {
-              color: "#ffffff",
-              width: 1.5
-            }
-          },
-          visualVariables: [
-            {
-              type: "size",
-              field: "incident_count",
-              stops: [
-                { value: 1, size: "10px" },
-                { value: 5, size: "16px" },
-                { value: 10, size: "24px" }
-              ]
-            }
-          ]
-        }
-      });
+      const slider = document.getElementById("yearSlider");
+      const yearLabel = document.getElementById("yearLabel");
+      const infoBox = document.getElementById("infoBox");
+      const metadataBox = document.getElementById("metadataBox");
 
-      map.add(casualtiesLayer);
+      const startDate = new Date(2000, 0, 1);
+      const endDate = new Date(2020, 11, 31);
 
-      casualtiesLayer.when(() => {
-        casualtiesLayer.queryFeatures({
-          where: "1=1",
-          outFields: ["*"],
+      const timeRange = endDate.getTime() - startDate.getTime();
+
+      slider.min = 0;
+      slider.max = timeRange;
+      slider.step = 86400000; 
+      slider.value = 0;
+
+      function updateTimeFilter(timeOffset) {
+        const selectedDate = new Date(startDate.getTime() + timeOffset);
+        yearLabel.textContent = `Date: ${selectedDate.toDateString()}`;
+
+        layer.timeExtent = new TimeExtent(selectedDate, selectedDate);
+
+        const startISO = selectedDate.toISOString().split("T")[0];
+        const whereClause = `timestamp >= DATE '${startISO}' AND timestamp < DATE '${startISO}'`;
+
+        // Update total feature count
+        layer.queryFeatureCount({ where: whereClause })
+          .then((count) => {
+            document.getElementById("totalCount").textContent = count;
+          })
+          .catch((err) => {
+            document.getElementById("totalCount").textContent = "Error";
+            console.error(err);
+          });
+
+        // Query metadata for gender and age breakdown
+        layer.queryFeatures({
+          where: whereClause,
+          outFields: ["boys", "girls", "men", "women"],
           returnGeometry: false
-        }).then(result => {
-          const features = result.features;
-          const dayGroups = {};
+        }).then((results) => {
+          let boys = 0;
+          let girls = 0;
+          let men = 0;
+          let women = 0;
 
-          let boys = 0, girls = 0, men = 0, women = 0;
-
-          features.forEach(f => {
-            const attr = f.attributes;
-            const date = new Date(attr.report_dt);
-            const day = date.toISOString().split("T")[0];
-
-            if (!dayGroups[day]) dayGroups[day] = [];
-            dayGroups[day].push(attr);
-
-            boys += attr.killed_male_child || 0;
-            girls += attr.killed_female_child || 0;
-            men += attr.killed_male_adult || 0;
-            women += attr.killed_female_adult || 0;
+          results.features.forEach(f => {
+            boys += f.attributes.boys || 0;
+            girls += f.attributes.girls || 0;
+            men += f.attributes.men || 0;
+            women += f.attributes.women || 0;
           });
 
-          document.getElementById("counts").textContent =
-            `Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
+          document.getElementById("boys").querySelector("span").textContent = boys;
+          document.getElementById("girls").querySelector("span").textContent = girls;
+          document.getElementById("men").querySelector("span").textContent = men;
+          document.getElementById("women").querySelector("span").textContent = women;
 
-          const container = document.getElementById("metadataContainer");
-          container.innerHTML = "";
-
-          Object.entries(dayGroups).sort().forEach(([day, attrs]) => {
-            let killed = 0;
-            let injured = 0;
-
-            attrs.forEach(a => {
-              killed += a.killed || 0;
-              injured += (
-                (a.injured_female_adult || 0) +
-                (a.injured_male_adult || 0) +
-                (a.injured_female_child || 0) +
-                (a.injured_male_child || 0)
-              );
-            });
-
-            const box = document.createElement("div");
-            box.className = "metadataDay";
-            box.innerHTML = `<strong>${day}</strong><br/>
-                             Events: ${attrs.length}<br/>
-                             Deaths: ${killed}<br/>
-                             Injured: ${injured}`;
-            container.appendChild(box);
-          });
+        }).catch((err) => {
+          document.getElementById("metadataBox").textContent = "Metadata error";
+          console.error(err);
         });
+      }
+
+      slider.addEventListener("input", () => {
+        const timeOffset = parseInt(slider.value);
+        updateTimeFilter(timeOffset);
+      });
+
+      view.when(() => {
+        updateTimeFilter(parseInt(slider.value));
       });
     });
   </script>
