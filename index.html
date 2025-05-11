@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Chrono Map with Scroll Filtering</title>
+  <title>Chrono Map with Horizontal Scroll</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://js.arcgis.com/4.28/esri/themes/dark/main.css" rel="stylesheet" />
   <script src="https://js.arcgis.com/4.28/"></script>
@@ -24,7 +24,8 @@
       padding: 12px 18px;
       z-index: 10;
       color: white;
-      min-width: 260px;
+      min-width: 280px;
+      font-size: 14px;
     }
 
     #metadataContainer {
@@ -50,8 +51,8 @@
       flex-shrink: 0;
     }
 
-    .highlight {
-      background-color: rgba(255, 255, 255, 0.15);
+    .metadataDay.highlight {
+      background-color: rgba(255, 255, 255, 0.1);
     }
   </style>
 </head>
@@ -72,14 +73,18 @@
       "esri/layers/FeatureLayer"
     ], function(Map, MapView, FeatureLayer) {
 
-      const map = new Map({ basemap: "gray" });
+      const map = new Map({
+        basemap: "gray"
+      });
 
       const view = new MapView({
         container: "viewDiv",
         map: map,
         center: [31.1656, 48.3794], // Ukraine
         zoom: 6,
-        ui: { components: ["attribution"] }
+        ui: {
+          components: ["attribution"]
+        }
       });
 
       const casualtiesLayer = new FeatureLayer({
@@ -92,22 +97,26 @@
           symbol: {
             type: "simple-marker",
             color: "#e74c3c",
-            size: "8px",
-            outline: { color: "#ffffff", width: 1 }
+            size: "10px",
+            outline: {
+              color: "#ffffff",
+              width: 1
+            }
           }
         }
       });
 
+      let casualtiesLayerView;
+
       map.add(casualtiesLayer);
 
-      let casualtiesLayerView;
       const container = document.getElementById("metadataContainer");
 
-      view.whenLayerView(casualtiesLayer).then(layerView => {
-        casualtiesLayerView = layerView;
-      });
-
       casualtiesLayer.when(() => {
+        view.whenLayerView(casualtiesLayer).then(function(layerView) {
+          casualtiesLayerView = layerView;
+        });
+
         casualtiesLayer.queryFeatures({
           where: "1=1",
           outFields: ["*"],
@@ -115,12 +124,14 @@
         }).then(result => {
           const features = result.features;
           const dayGroups = {};
+
           let boys = 0, girls = 0, men = 0, women = 0;
 
           features.forEach(f => {
             const attr = f.attributes;
             const date = new Date(attr.report_dt);
             const day = date.toISOString().split("T")[0];
+
             if (!dayGroups[day]) dayGroups[day] = [];
             dayGroups[day].push(attr);
 
@@ -134,8 +145,11 @@
             `Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
 
           container.innerHTML = "";
+
           Object.entries(dayGroups).sort().forEach(([day, attrs]) => {
-            let killed = 0, injured = 0;
+            let killed = 0;
+            let injured = 0;
+
             attrs.forEach(a => {
               killed += a.killed || 0;
               injured += (
@@ -156,50 +170,37 @@
             container.appendChild(box);
           });
 
-          updateOnScroll();
+          // Enable scroll interaction
+          container.addEventListener("scroll", updateOnScroll);
+          updateOnScroll(); // initial call
         });
       });
-
-      container.addEventListener("scroll", debounce(updateOnScroll, 100));
 
       function updateOnScroll() {
         const boxes = document.querySelectorAll(".metadataDay");
         const containerRect = container.getBoundingClientRect();
-        let closestBox = null;
-        let minDistance = Infinity;
+        const visibleDays = [];
 
         boxes.forEach(box => {
           const rect = box.getBoundingClientRect();
-          const boxCenter = rect.left + rect.width / 2;
-          const containerCenter = containerRect.left + containerRect.width / 2;
-          const distance = Math.abs(containerCenter - boxCenter);
 
-          if (distance < minDistance) {
-            minDistance = distance;
-            closestBox = box;
+          if (rect.right >= containerRect.left && rect.left <= containerRect.right) {
+            visibleDays.push(box.getAttribute("data-day"));
+            box.classList.add("highlight");
+          } else {
+            box.classList.remove("highlight");
           }
         });
 
-        boxes.forEach(b => b.classList.remove("highlight"));
-        if (closestBox) {
-          closestBox.classList.add("highlight");
-          const day = closestBox.getAttribute("data-day");
+        if (visibleDays.length > 0 && casualtiesLayerView) {
+          const whereClause = visibleDays
+            .map(day => `report_dt LIKE '${day}%'`)
+            .join(" OR ");
 
-          if (casualtiesLayerView) {
-            casualtiesLayerView.filter = {
-              where: `report_dt LIKE '${day}%'`
-            };
-          }
+          casualtiesLayerView.filter = {
+            where: whereClause
+          };
         }
-      }
-
-      // Debounce utility
-      function debounce(func, wait) {
-        let timeout;
-        return function(...args) {
-          clearTimeout(timeout);
-          timeout = setTimeout(() => func.apply(this, args), wait);
-        };
       }
     });
   </script>
