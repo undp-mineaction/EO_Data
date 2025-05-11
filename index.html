@@ -91,6 +91,23 @@
         url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
         outFields: ["*"],
         title: "Casualties",
+         labelingInfo: [{
+          labelExpressionInfo: {
+            expression: "$feature.incident_count"
+          },
+          symbol: {
+            type: "text",
+            color: "white",
+            haloColor: "black",
+            haloSize: 1,
+            font: {
+              size: 12,
+              family: "Avenir Next",
+              weight: "bold"
+            }
+          },
+          labelPlacement: "center-center"
+        }],
         labelsVisible: true,
         renderer: {
           type: "simple",
