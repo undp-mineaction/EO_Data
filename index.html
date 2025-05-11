@@ -38,7 +38,6 @@
       background: rgba(0, 0, 0, 0.4);
       z-index: 9;
       border-top: 1px solid #888;
-      scroll-snap-type: x mandatory;
     }
 
     .metadataDay {
@@ -49,12 +48,15 @@
       font-size: 12px;
       text-align: center;
       flex-shrink: 0;
-      scroll-snap-align: start;
+      cursor: pointer;
     }
 
     .metadataDay.active {
       background: rgba(255, 255, 255, 0.1);
-      border: 1px solid #fff;
+    }
+
+    .esri-layer {
+      transition: opacity 0.3s ease-in-out;
     }
   </style>
 </head>
@@ -75,9 +77,7 @@
       "esri/layers/FeatureLayer"
     ], function(Map, MapView, FeatureLayer) {
 
-      const map = new Map({
-        basemap: "gray"
-      });
+      const map = new Map({ basemap: "gray" });
 
       const view = new MapView({
         container: "viewDiv",
@@ -91,23 +91,27 @@
         url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
         outFields: ["*"],
         title: "Casualties",
+        labelsVisible: true,
         renderer: {
           type: "simple",
           symbol: {
             type: "simple-marker",
             color: "#e74c3c",
-            size: "15px",
-            outline: {
-              color: "#ffffff",
-              width: 0.5
-            }
+            size: "8px",
+            outline: { color: "#ffffff", width: 1 }
           }
         }
       });
 
       map.add(casualtiesLayer);
 
+      let casualtiesLayerView;
       let allFeatures = [];
+
+      view.whenLayerView(casualtiesLayer).then(function(layerView) {
+        casualtiesLayerView = layerView;
+        casualtiesLayer.opacity = 1;
+      });
 
       casualtiesLayer.when(() => {
         casualtiesLayer.queryFeatures({
@@ -116,86 +120,66 @@
           returnGeometry: false
         }).then(result => {
           allFeatures = result.features;
-          renderMetadataStrip(allFeatures);
-          scrollListener(); // Attach after rendering
+          const dayGroups = {};
+
+          allFeatures.forEach(f => {
+            const attr = f.attributes;
+            const date = new Date(attr.report_dt);
+            const day = date.toISOString().split("T")[0];
+            if (!dayGroups[day]) dayGroups[day] = [];
+            dayGroups[day].push(attr);
+          });
+
+          const container = document.getElementById("metadataContainer");
+          container.innerHTML = "";
+
+          Object.entries(dayGroups).sort().forEach(([day, attrs]) => {
+            let killed = 0;
+            let injured = 0;
+
+            attrs.forEach(a => {
+              killed += a.killed || 0;
+              injured += (
+                (a.injured_female_adult || 0) +
+                (a.injured_male_adult || 0) +
+                (a.injured_female_child || 0) +
+                (a.injured_male_child || 0)
+              );
+            });
+
+            const box = document.createElement("div");
+            box.className = "metadataDay";
+            box.setAttribute("data-day", day);
+            box.innerHTML = `<strong>${day}</strong><br/>
+                             Events: ${attrs.length}<br/>
+                             Deaths: ${killed}<br/>
+                             Injured: ${injured}`;
+            box.addEventListener("click", () => {
+              document.querySelectorAll('.metadataDay').forEach(el => el.classList.remove('active'));
+              box.classList.add('active');
+              updateCountsForDay(day);
+            });
+            container.appendChild(box);
+          });
+
+          // Optionally trigger initial state
+          const firstDay = Object.keys(dayGroups).sort()[0];
+          updateCountsForDay(firstDay);
         });
       });
 
-      function renderMetadataStrip(features) {
-        const dayGroups = {};
-        features.forEach(f => {
-          const attr = f.attributes;
-          const date = new Date(attr.report_dt);
-          const day = date.toISOString().split("T")[0];
-          if (!dayGroups[day]) dayGroups[day] = [];
-          dayGroups[day].push(attr);
-        });
-
-        const container = document.getElementById("metadataContainer");
-        container.innerHTML = "";
-
-        Object.entries(dayGroups).sort().forEach(([day, attrs]) => {
-          let killed = 0, injured = 0;
-          attrs.forEach(a => {
-            killed += a.killed || 0;
-            injured +=
-              (a.injured_female_adult || 0) +
-              (a.injured_male_adult || 0) +
-              (a.injured_female_child || 0) +
-              (a.injured_male_child || 0);
-          });
-
-          const box = document.createElement("div");
-          box.className = "metadataDay";
-          box.setAttribute("data-day", day);
-          box.innerHTML = `<strong>${day}</strong><br/>
-                           Events: ${attrs.length}<br/>
-                           Deaths: ${killed}<br/>
-                           Injured: ${injured}`;
-          container.appendChild(box);
-        });
-
-        // Initialize to first day
-        const firstDay = container.querySelector(".metadataDay")?.getAttribute("data-day");
-        if (firstDay) updateCountsForDay(firstDay);
-      }
-
-      function scrollListener() {
-        const container = document.getElementById("metadataContainer");
-
-        container.addEventListener("scroll", () => {
-          const boxes = Array.from(container.getElementsByClassName("metadataDay"));
-
-          let closestBox = null;
-          let closestOffset = Infinity;
-
-          boxes.forEach(box => {
-            const boxRect = box.getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect();
-            const offset = Math.abs(boxRect.left - containerRect.left);
-
-            if (offset < closestOffset) {
-              closestOffset = offset;
-              closestBox = box;
-            }
-          });
-
-          if (closestBox) {
-            const day = closestBox.getAttribute("data-day");
-            if (day && day !== container.getAttribute("data-active-day")) {
-              container.setAttribute("data-active-day", day);
-
-              // highlight active
-              boxes.forEach(b => b.classList.remove("active"));
-              closestBox.classList.add("active");
-
-              updateCountsForDay(day);
-            }
-          }
-        });
-      }
-
       function updateCountsForDay(day) {
+        if (!casualtiesLayerView) return;
+
+        casualtiesLayerView.opacity = 0;
+        setTimeout(() => {
+          casualtiesLayer.definitionExpression = `report_dt LIKE '${day}%'`;
+          setTimeout(() => {
+            casualtiesLayerView.opacity = 1;
+          }, 200);
+        }, 200);
+
+        // Update summary stats
         let boys = 0, girls = 0, men = 0, women = 0;
 
         const dayFeatures = allFeatures.filter(f => {
