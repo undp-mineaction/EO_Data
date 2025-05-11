@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Chrono Map with Horizontal Scroll</title>
+  <title>Chrono Map with Scroll Filtering</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://js.arcgis.com/4.28/esri/themes/dark/main.css" rel="stylesheet" />
   <script src="https://js.arcgis.com/4.28/"></script>
@@ -48,15 +48,10 @@
       font-size: 12px;
       text-align: center;
       flex-shrink: 0;
-      cursor: pointer;
     }
 
-    .metadataDay.active {
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .esri-layer {
-      transition: opacity 0.3s ease-in-out;
+    .highlight {
+      background-color: rgba(255, 255, 255, 0.15);
     }
   </style>
 </head>
@@ -106,11 +101,10 @@
       map.add(casualtiesLayer);
 
       let casualtiesLayerView;
-      let allFeatures = [];
+      const container = document.getElementById("metadataContainer");
 
-      view.whenLayerView(casualtiesLayer).then(function(layerView) {
+      view.whenLayerView(casualtiesLayer).then(layerView => {
         casualtiesLayerView = layerView;
-        casualtiesLayer.opacity = 1;
       });
 
       casualtiesLayer.when(() => {
@@ -119,24 +113,29 @@
           outFields: ["*"],
           returnGeometry: false
         }).then(result => {
-          allFeatures = result.features;
+          const features = result.features;
           const dayGroups = {};
+          let boys = 0, girls = 0, men = 0, women = 0;
 
-          allFeatures.forEach(f => {
+          features.forEach(f => {
             const attr = f.attributes;
             const date = new Date(attr.report_dt);
             const day = date.toISOString().split("T")[0];
             if (!dayGroups[day]) dayGroups[day] = [];
             dayGroups[day].push(attr);
+
+            boys += attr.killed_male_child || 0;
+            girls += attr.killed_female_child || 0;
+            men += attr.killed_male_adult || 0;
+            women += attr.killed_female_adult || 0;
           });
 
-          const container = document.getElementById("metadataContainer");
+          document.getElementById("counts").textContent =
+            `Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
+
           container.innerHTML = "";
-
           Object.entries(dayGroups).sort().forEach(([day, attrs]) => {
-            let killed = 0;
-            let injured = 0;
-
+            let killed = 0, injured = 0;
             attrs.forEach(a => {
               killed += a.killed || 0;
               injured += (
@@ -154,49 +153,53 @@
                              Events: ${attrs.length}<br/>
                              Deaths: ${killed}<br/>
                              Injured: ${injured}`;
-            box.addEventListener("click", () => {
-              document.querySelectorAll('.metadataDay').forEach(el => el.classList.remove('active'));
-              box.classList.add('active');
-              updateCountsForDay(day);
-            });
             container.appendChild(box);
           });
 
-          // Optionally trigger initial state
-          const firstDay = Object.keys(dayGroups).sort()[0];
-          updateCountsForDay(firstDay);
+          updateOnScroll();
         });
       });
 
-      function updateCountsForDay(day) {
-        if (!casualtiesLayerView) return;
+      container.addEventListener("scroll", debounce(updateOnScroll, 100));
 
-        casualtiesLayerView.opacity = 0;
-        setTimeout(() => {
-          casualtiesLayer.definitionExpression = `report_dt LIKE '${day}%'`;
-          setTimeout(() => {
-            casualtiesLayerView.opacity = 1;
-          }, 200);
-        }, 200);
+      function updateOnScroll() {
+        const boxes = document.querySelectorAll(".metadataDay");
+        const containerRect = container.getBoundingClientRect();
+        let closestBox = null;
+        let minDistance = Infinity;
 
-        // Update summary stats
-        let boys = 0, girls = 0, men = 0, women = 0;
+        boxes.forEach(box => {
+          const rect = box.getBoundingClientRect();
+          const boxCenter = rect.left + rect.width / 2;
+          const containerCenter = containerRect.left + containerRect.width / 2;
+          const distance = Math.abs(containerCenter - boxCenter);
 
-        const dayFeatures = allFeatures.filter(f => {
-          const date = new Date(f.attributes.report_dt);
-          return date.toISOString().split("T")[0] === day;
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestBox = box;
+          }
         });
 
-        dayFeatures.forEach(f => {
-          const attr = f.attributes;
-          boys += attr.killed_male_child || 0;
-          girls += attr.killed_female_child || 0;
-          men += attr.killed_male_adult || 0;
-          women += attr.killed_female_adult || 0;
-        });
+        boxes.forEach(b => b.classList.remove("highlight"));
+        if (closestBox) {
+          closestBox.classList.add("highlight");
+          const day = closestBox.getAttribute("data-day");
 
-        document.getElementById("counts").textContent =
-          `Boys: ${boys} | Girls: ${girls} | Men: ${men} | Women: ${women}`;
+          if (casualtiesLayerView) {
+            casualtiesLayerView.filter = {
+              where: `report_dt LIKE '${day}%'`
+            };
+          }
+        }
+      }
+
+      // Debounce utility
+      function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => func.apply(this, args), wait);
+        };
       }
     });
   </script>
