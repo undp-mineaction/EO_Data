@@ -91,6 +91,15 @@
         url: "https://geosmarthosting.undp.org/arcgis/rest/services/Hosted/Copy_of_accidents_pull/FeatureServer/0",
         outFields: ["*"],
         title: "Casualties",
+        popupTemplate: {
+    title: "Incident on {report_dt}",
+    content: `
+      <strong>Incident Count:</strong> {Incident_Count}<br/>
+      <strong>Killed:</strong> {killed}<br/>
+      <strong>Injured (Adults):</strong> {injured_female_adult} female, {injured_male_adult} male<br/>
+      <strong>Injured (Children):</strong> {injured_female_child} female, {injured_male_child} male<br/>
+    `
+  },
          labelingInfo: [{
           labelExpressionInfo: {
             expression: "$feature.Incident_Count"
