@@ -96,11 +96,15 @@
     content: `
       <strong>Incident Count:</strong> {Incident_Count}<br/>
       <strong>Total Killed:</strong> {killed}<br/>
-      <strong>Killed (Adults):</strong> {killed_female_adult} female, {killed_male_adult} male<br/>
-      <strong>Killed (Children):</strong> {injured_female_child} female, {injured_male_child} male<br/>
+      <strong>Killed (Adults):</strong><br> 
+      <ul>
+<li>{killed_female_adult} female,</li> 
+<li>{killed_male_adult} male</li>
+</ul>
+      <strong>Killed (Children):</strong> {injured_female_child} female, {injured_male_child} male<br>
       <strong>Total Injured:</strong> {Injured}<br/>
-      <strong>Injured (Adults):</strong> {injured_female_adult} female, {injured_male_adult} male<br/>
-      <strong>Injured (Children):</strong> {injured_female_child} female, {injured_male_child} male<br/>
+      <strong>Injured (Adults):</strong> {injured_female_adult} female, {injured_male_adult} male<br>
+      <strong>Injured (Children):</strong> {injured_female_child} female, {injured_male_child} male<br>
       <strong>EO Category:</strong>{eo_cat}<br/>
     `
   },
