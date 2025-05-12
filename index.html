@@ -113,23 +113,15 @@
       </ul>
       <strong>EO Category:</strong> {eo_cat}<br/>
     `,
-  expressionInfos: [
-    {
-      name: "injFemaleAdult",
-      expression: "Default($feature.injured_female_adult, 0)"
-    },
-    {
-      name: "injMaleAdult",
-      expression: "Default($feature.injured_male_adult, 0)"
-    },
-    {
-      name: "injFemaleChild",
-      expression: "Default($feature.injured_female_child, 0)"
-    },
-    {
-      name: "injMaleChild",
-      expression: "Default($feature.injured_male_child, 0)"
-    }
+expressionInfos: [
+    { name: "ifa", expression: "Default($feature.injured_female_adult, 0)" },
+    { name: "ima", expression: "Default($feature.injured_male_adult, 0)" },
+    { name: "ifc", expression: "Default($feature.injured_female_child, 0)" },
+    { name: "imc", expression: "Default($feature.injured_male_child, 0)" },
+    { name: "kf",  expression: "Default($feature.killed_female_adult, 0)" },
+    { name: "km",  expression: "Default($feature.killed_male_adult, 0)" },
+    { name: "kfc", expression: "Default($feature.killed_female_child, 0)" },
+    { name: "kmc", expression: "Default($feature.killed_male_child, 0)" }
   ]
 
       },
