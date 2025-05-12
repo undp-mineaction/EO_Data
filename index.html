@@ -97,20 +97,26 @@
       <strong>Incident Count:</strong> {Incident_Count}<br/>
       <strong>Total Killed:</strong> {killed}<br/>
       <strong>Killed:</strong><br> 
-      <ul>
-          <li>{killed_female_adult} Woman,</li> 
-          <li>{killed_male_adult} Man</li>
-          <li>{killed_female_child} Girl</li>
-          <li>{killed_male_child} Boy</li>
-      </ul>
-      <strong>Total Injured:</strong> {Injured}<br/>
-       <strong>Injured:</strong><br> 
-          <ul>
-          <li>{injured_female_adult} Woman</li> 
-          <li>{injured_male_adult} Man</li>
-          <li>{injured_female_girl} Girl</li>
-          <li>{injured_male_child} Boy</li>
-      </ul>
+      <div style="display: flex; gap: 20px; margin-top: 5px;">
+  <div>
+    <strong>Killed:</strong>
+    <ul style="margin: 4px 0; padding-left: 20px;">
+      <li>{killed_female_adult} Woman</li>
+      <li>{killed_male_adult} Man</li>
+      <li>{killed_female_child} Girl</li>
+      <li>{killed_male_child} Boy</li>
+    </ul>
+  </div>
+  <div>
+    <strong>Injured:</strong>
+    <ul style="margin: 4px 0; padding-left: 20px;">
+      <li>{injured_female_adult} Woman</li>
+      <li>{injured_male_adult} Man</li>
+      <li>{injured_female_child} Girl</li>
+      <li>{injured_male_child} Boy</li>
+    </ul>
+  </div>
+</div>
       <strong>EO Category:</strong> {eo_cat}<br/>
     `
       },
