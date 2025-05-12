@@ -95,8 +95,10 @@
     title: "Incident on {report_dt}",
     content: `
       <strong>Incident Count:</strong> {Incident_Count}<br/>
-      <strong>Killed:</strong> {killed}<br/>
-      <strong>Killed:</strong> {Injured}<br/>
+      <strong>Total Killed:</strong> {killed}<br/>
+      <strong>Killed (Adults):</strong> {killed_female_adult} female, {killed_male_adult} male<br/>
+      <strong>Killed (Children):</strong> {injured_female_child} female, {injured_male_child} male<br/>
+      <strong>Total Injured:</strong> {Injured}<br/>
       <strong>Injured (Adults):</strong> {injured_female_adult} female, {injured_male_adult} male<br/>
       <strong>Injured (Children):</strong> {injured_female_child} female, {injured_male_child} male<br/>
     `
