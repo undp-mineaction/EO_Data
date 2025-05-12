@@ -111,7 +111,26 @@
           <li>{injured_male_child} Boy</li>
       </ul>
       <strong>EO Category:</strong>{eo_cat}<br/>
-    `
+    `,
+  expressionInfos: [
+    {
+      name: "injFemaleAdult",
+      expression: "Default($feature.injured_female_adult, 0)"
+    },
+    {
+      name: "injMaleAdult",
+      expression: "Default($feature.injured_male_adult, 0)"
+    },
+    {
+      name: "injFemaleChild",
+      expression: "Default($feature.injured_female_child, 0)"
+    },
+    {
+      name: "injMaleChild",
+      expression: "Default($feature.injured_male_child, 0)"
+    }
+  ]
+}
       },
          labelingInfo: [{
           labelExpressionInfo: {
